@@ -1,6 +1,7 @@
 # ZenithVCR
 This repository is for the Zenith Voice Controlled Radio.
-
+- by J.King, March 2025
+- Special thanks to OpenAI’s ChatGPT for assistance with debugging, Flask optimization, and streaming improvements.
 ## 🎵 Overview
 This project brings a **1940s Zenith Radio** back to life with modern streaming capabilities! It features:
 - **ESP32-S3 DevKitC** as the core controller (w/at least 2MB PSRAM).

@@ -70,6 +70,6 @@ Use Arduino IDE or PlatformIO to upload the code.
 ✅ Solution: URLs are properly encoded & decoded in JavaScript and Flask.
 
 📜 License
-### MIT License - Open Source! Feel free to modify and improve.
+### GPL-3.0 - Open Source! Feel free to modify and improve provided you pass on your work to others.
 
 

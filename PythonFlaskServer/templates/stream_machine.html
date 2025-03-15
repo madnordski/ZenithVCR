@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="shortcut icon" href="data:," />
+    <!-- The Zenith Voice Controlled Internet Radio streams Internet
+    radio stations, podcasts and local music.  This web page
+    determines which album is streamed when local music is served.
+    By J. King
+    13 March 2025
+    Copyright (c) GPL-3.0 March 2025
+    -->
+    
+  <title>Zenith VCIR Music Browser</title>
+  <style>
+    th, td {
+	padding: 15px;
+    }
+  </style>
+
+<script>
+    function showAlbums(artist) {
+	fetch(`/albums/${artist}`)
+            .then(response => response.json())
+            .then(data => {
+		let albumList = document.getElementById("albums");
+		albumList.innerHTML = data.map(a => `<option value="${a}">${a}</option>`).join("");
+            });
+    }
+
+function showTracks(artist, album) {
+    let encArtist = encodeURIComponent(artist);
+    let encAlbum  = encodeURIComponent(album);
+    fetch(`/play/${encArtist}/${encAlbum}`)
+        .then(response => response.json())
+        .then(data => {
+            let trackList = document.getElementById("tracks");
+            trackList.innerHTML = data.map(t => `<li>${t}</li>`).join("");
+        });
+    }
+
+    function playAlbum(album) {
+	let art = document.getElementById("artist_list").value;
+	document.getElementById("now_playing_artist").innerHTML = art;
+	document.getElementById("now_playing_album").innerHTML = album;
+	showTracks(art, album);
+    }
+</script>
+</head>
+<body>
+  <!-- " -->
+  <h1 align="center">The Zenith Voice Controlled Internet Radio</h1>
+  <p align="center">Control the local music streaming service</p>
+  <h1>Artists</h1>
+  <p>Select an Artist</p>
+  <table>
+    <tr><td><select name="artist_list" id="artist_list"
+		    onchange="showAlbums(this.value)">
+	  {% for artist in artists %}
+	  <option value="{{ artist }}">{{ artist }}</option>
+	  {% endfor %}
+	</select>
+      </td>
+      <td bgcolor="violet" align="right"><h2>Now Playing</h2>
+	<h3 color="white" id="now_playing_artist"></h3>
+	<h3 color="white" id="now_playing_album"></h3>
+    </td></tr>
+  </table>
+  
+  <h2>Albums</h2>
+  <p>Select an album, press Play to queue</p>
+  <select id="albums"></select>
+  <input type="button" name="Play" value="Play"
+	 onclick="playAlbum(document.getElementById('albums').value)">
+
+  <h2>Tracks</h2>
+  <p>The play queue</p>
+  <ul id="tracks"></ul>
+
+</body>
+<script>
+// "
+window.addEventListener("load", (event) => {
+    document.getElementById("artist_list").value = "{{ nowPlayingArtist }}";
+    showAlbums("{{ nowPlayingArtist }}");
+    document.getElementById("albums").value = "{{ nowPlayingAlbum }}";
+    document.getElementById("now_playing_artist").innerHTML
+	="{{ nowPlayingArtist }}";
+    document.getElementById("now_playing_album").innerHTML
+	="{{ nowPlayingAlbum }}";
+})
+</script>
+
+</html>

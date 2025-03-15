@@ -15,9 +15,9 @@ This project brings a **1940s Zenith Radio** back to life with modern streaming 
 ✅ **Control Playback via Voice Commands or Encoder Knob w/Button**  
 ✅ **mDNS for Easy Web Interface Access**  
 ✅ **Multi-Threaded Flask Server for Smooth UI & Streaming**  
-✅ **Auto-Switching Between Wi-Fi Access Points**
-✅ **Creates Access Point for Easy WiFi Setup** 
-✅ **Web Interface for entering Internet Radio Station URLs** 
+✅ **Auto-Switching Between Wi-Fi Access Points**  
+✅ **Creates Access Point for Easy WiFi Setup**  
+✅ **Web Interface for entering Internet Radio Station URLs**
 
 ## 🔧 Hardware Used
 - **ESP32-S3 DevKitC-1 (YD-ESP32-S3 N8R2)**

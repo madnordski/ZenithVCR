@@ -16,8 +16,8 @@ abilty to skip ahead by pressing the Zenith tuner button.
 
  by J. King, 14 Feb 2025.
  Copyright (c) GPL-3.0, Feb 2025
- $Revision: 1.22 $
- $Date: 2025/03/15 03:38:28 $
+ $Revision: 1.25 $
+ $Date: 2025/03/17 21:06:16 $
 
 '''
 import os
@@ -31,6 +31,7 @@ import requests
 from gevent.pywsgi import WSGIServer
 from zeroconf import Zeroconf, ServiceInfo
 import socket
+import time
 
 '''PODCAST_URL is the download URL -- it is not the stream that is played!
 
@@ -132,63 +133,25 @@ def get_sorted_playlist(path):
 # populate and define some of our globals
 
 # get the entire playlist in track order starting with this album
-nowPlayingArtist = "Eric Clapton"
-nowPlayingAlbum  = "MTV Unplugged"
+try:
+    lastPlayedF = open(os.path.join(MUSIC_DIR, "LastPlaying.txt"), "r")
+    nowPlayingArtist = (lastPlayedF.readline()).strip()
+    nowPlayingAlbum  = (lastPlayedF.readline()).strip()
+    lastPlayedF.close()
+except FileNotFoundError:
+    nowPlayingArtist = "Eric Clapton"
+    nowPlayingAlbum  = "MTV Unplugged"
+    
+current_track_index = 0  # Global track index
+ffmpeg_process = None    # Global player process
+first = True             # We increment the track index upon entry,
+                         # except for the fist time
     
 playList = get_sorted_playlist("/".join([MUSIC_DIR,
                                          nowPlayingArtist,
                                          nowPlayingAlbum]))
 # keep us sane
 print(playList, file=sys.stderr)
-
-current_track_index = 0  # Global track index
-ffmpeg_process = None    # Global player process
-first = True             # We increment the track index upon entry,
-                         # except for the fist time
-
-'''  start_stream
-
-  This actually reads the mp3/ogg file and spews the stream.
-
-  @param file_path the name of the file to stream. It's just the file
-         name, this function gets the full path from the global
-         variables MUSIC_DIR, nowPlayingArtist and nowPlayingAlbum.
-
-  @return the standard output from the ffmpeg process streaming the
-          audio file.
-'''
-                         
-def start_stream(file_path):
-    # Starts an ffmpeg process to stream a specific track.
-    global ffmpeg_process
-
-    # If there's an active ffmpeg process,
-    #  terminate it before starting a new one
-    if ffmpeg_process is not None:
-        ffmpeg_process.terminate()
-        ffmpeg_process.wait()  # Ensure it fully stops before continuing
-
-    # complete the path with the album location
-    file_path = "/".join(
-        [MUSIC_DIR, nowPlayingArtist, nowPlayingAlbum, file_path])
-
-    ffmpeg_cmd = [
-        "ffmpeg",
-        "-hide_banner",
-        "-loglevel", "error",
-        "-vn",
-        "-re", "-i", file_path,  # Read input file
-        "-codec:a", "libvorbis",  # OGG Vorbis encoding
-        "-b:a", "256k",  # was 128
-        "-f", "ogg", "-"  # Output to stdout for streaming
-    ]
-
-    # Start the new streaming process
-    ffmpeg_process = subprocess.Popen(ffmpeg_cmd,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.DEVNULL)
-
-    return ffmpeg_process.stdout  # Return the new stream output
 
 ##################### HTTP SERVER SECTION #########################
 
@@ -201,39 +164,32 @@ stream_app = Flask("ZenithStream")
   Stream local music.  This uses start_stream() to read the file and
   spew audio frames to the client.
 '''
-
 @stream_app.route('/stream')
 def stream():
-    # when called stream() will skip to the next track in the playlist.
     global current_track_index
-    global first                # skip unless first is true
+    global first
+    global playList
     
-    # Cycle through playlist
     if not first:
         current_track_index = (current_track_index + 1) % len(playList)
     first = False
-    start_stream(playList[current_track_index])
+
+    print("Playing ", playList[current_track_index], file=sys.stderr)
     
-    def generate():
-        global ffmpeg_process
-        try:
-            while True:
-                chunk = ffmpeg_process.stdout.read(1024)
-                if not chunk:
-                    break
-                yield chunk
-        except (OSError, IOError, BrokenPipeError, BlockingIOError) as e:
-            print("Client disconnected (e): ", file=sys.stderr)
-        finally:
-            print("Stopping stream on disconnect.", file=sys.stderr)
-            if ffmpeg_process:
-                ffmpeg_process.terminate()
-                ffmpeg_process = None
+    musicFile = "/".join([MUSIC_DIR,
+                          nowPlayingArtist,
+                          nowPlayingAlbum,
+                          playList[current_track_index]])
+    
+    def generate(musicFile):
+        cmd = ["ffmpeg", "-i", musicFile, "-f", "mp3", "-"]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                   stderr=subprocess.DEVNULL)
 
-    return Response(generate(), mimetype="audio/ogg")
+        while chunk := process.stdout.read(1024):
+            yield chunk
 
-    #return Response(start_stream(playList[current_track_index]),
-    #                mimetype="audio/ogg")
+    return Response(generate(musicFile), mimetype="audio/mpeg")
 
 ''' /podcast service
 
@@ -395,3 +351,14 @@ if __name__ == "__main__":
         print("Shutting down mDNS...")
         zeroconf.unregister_service(service_info)
         zeroconf.close()
+        print("Saving the currently playing artist and album...")
+        try:
+            lastPlayed = open(os.path.join(MUSIC_DIR, "LastPlaying.txt"), "w")
+            print(nowPlayingArtist, file=lastPlayed)
+            print(nowPlayingAlbum,  file=lastPlayed)
+            lastPlayed.close()
+        except Exception as e:
+            print("Failed to save currently playing artist and album!",
+                  file=sys.stderr)
+            print("Error: ", e, file=sys.stderr)
+            

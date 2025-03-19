@@ -38,8 +38,8 @@
   @copy All rights reserved.
   @brief discription
   
-  $Revision: 1.55 $
-  $Date: 2025/03/19 14:42:08 $
+  $Revision: 1.57 $
+  $Date: 2025/03/19 21:15:12 $
 
 */
 
@@ -145,9 +145,6 @@ const int rssiMinimum = -65; // switch access points when signal gets
 
 // WiFi Access Point for setting passwords and station urls
 const char *apSSID = "Zenith Setup";
-
-IPAddress violet(10,0,0,9); // violet will host the voice to task mapping
-WiFiClient commandListClient; // we connect to violet as a client
 
 // we also run an http server for configuring the Zenith VC Radio
 NetworkServer server(80);
@@ -417,7 +414,7 @@ void zenithVCTask(void *pvParams) {
       int taskId = 0;
 
       taskId = gCommands[zenithCmd];
-      if ( gRadioOff ) {
+      if ( true || gRadioOff ) {
 	sp2x("***tsk*** CMDID: ", zenithCmd);
 	sp2x("***tsk*** TaskID: ", taskId);
       }
@@ -675,57 +672,16 @@ void setup() {
   // Set thevolume (0-100)
   audio.setVolume(gVolEncoderPos);
 
-  // let's see if we can get our list of stations and commands from violet
-  if ( commandListClient.connect(violet, 80) ) {
-    char line[STATION_CHAR_LIMIT];
-    int nLines = 0;
-    int chars = 0;
-    
-    // get the commands
-    while ( gNumCommands == 0 ) {
-      char *savePtr;
-      commandListClient.println("GET /voice_commands.txt HTTP/1.0");
-      commandListClient.println();
-
-      sp1("Wait for commands...");
-      while ( ! commandListClient.available() ) {} // wait for response
-      sp1("Reading commands...");
-      while ( (chars = clientReadLine(&commandListClient,
-				      line, STATION_CHAR_LIMIT)) != -1 ) {
-	if ( chars > 0 && line[0] == '>' ) {
-	  char *cmd, *tsk;
-	  char cmdStr[16];
-	  int tskId;
-	  cmd = strtok_r(line+1, ",", &savePtr);
-	  tsk = strtok_r(NULL, ",", &savePtr);
-	  if ( cmd != NULL && tsk != NULL ) {
-	    tskId = atoi(tsk);
-	    gCommands[atoi(cmd)] = tskId;
-	    gNumCommands++;
-	    strcpy(cmdStr, "cmd");
-	    strcat(cmdStr, cmd);
-	    sp2s(cmdStr, tskId);
-	    prefs.putInt(cmdStr, tskId); // save for when we can't connect
-	  }
-	}
-      }
-      sp2("Commands read: ", gNumCommands);
-    }      
-    commandListClient.stop();
+  // get from preferences, iterate commands in prefs
+  for (int i=0; i<COMMAND_LIMIT; i++) {
+    gCommands[i] = 0;
   }
-  else {
-    // get from preferences, iterate commands in prefs
-    for (int i=0; i<COMMAND_LIMIT; i++) {
-      char cmdStr[16];
-      sprintf(cmdStr, "cmd%d", i);
-      if ( prefs.isKey(cmdStr) ) {
-	gCommands[i] = prefs.getInt(cmdStr);
-	gNumCommands++;
-      }
-      else {
-	gCommands[i] = 0;
-      }
-      sp2sx(i, gCommands[i]);
+  for (int i=0; i<nTaskIds; i++) {
+    int cId = prefs.getInt(tskIds[i]);
+    int tId = atoi(tskIds[i]+3);
+    if ( cId >= 0 && cId < COMMAND_LIMIT ) {
+      gCommands[cId] = tId;
+      sp2sx(cId, gCommands[cId]);
     }
   }
   

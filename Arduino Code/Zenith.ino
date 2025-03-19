@@ -38,8 +38,8 @@
   @copy All rights reserved.
   @brief discription
   
-  $Revision: 1.52 $
-  $Date: 2025/03/11 20:52:11 $
+  $Revision: 1.55 $
+  $Date: 2025/03/19 14:42:08 $
 
 */
 
@@ -57,6 +57,7 @@
 #include "GetRequestParser.h"
 #include "index.h"
 #include "index2.h"
+#include "index3.h"
 
 // debug
 //#define DEBUG
@@ -95,6 +96,12 @@ const gpio_num_t nextTrackPin = GPIO_NUM_14; // the favorite station push button
 char *staIds[] = {"sta55", "sta60", "sta65", "sta70", "sta80", "sta90",
 		  "sta100", "sta110", "sta120", "sta130", "sta140",
 		  "sta150", "sta160"};
+
+// the task ids, set of keys
+const int nTaskIds = 17;
+char *tskIds[] = {"tsk10", "tsk11", "tsk12", "tsk13", "tsk14", "tsk15",
+		  "tsk16", "tsk17", "tsk18", "tsk19", "tsk20",
+		  "tsk21", "tsk22", "tsk23", "tsk24", "tsk25", "tsk26"};
 
 // normal loop or settings loop
 bool gAPMode = false;
@@ -410,8 +417,10 @@ void zenithVCTask(void *pvParams) {
       int taskId = 0;
 
       taskId = gCommands[zenithCmd];
-      sp2("*** CMDID: ", zenithCmd);
-      sp2("*** TaskID: ", taskId);
+      if ( gRadioOff ) {
+	sp2x("***tsk*** CMDID: ", zenithCmd);
+	sp2x("***tsk*** TaskID: ", taskId);
+      }
       
       switch ( taskId ) {
       case 5:                 // volume up
@@ -460,7 +469,7 @@ void zenithVCTask(void *pvParams) {
 	gTunEncoderPos = 2;    // For Classical
 	break;
       case 20:
-	gTunEncoderPos = 7;    // For Jazz
+	gTunEncoderPos = 10;    // For Jazz
 	break;
       case 21:
 	gTunEncoderPos = localStreamPos; // Stream Local
@@ -477,10 +486,8 @@ void zenithVCTask(void *pvParams) {
       case 25:
 	gRadioOff = false;   // trun on radio
 	break;
-      case 26:               // how's marvin
-	audio.connecttohost("http://10.0.0.30:8000/marvin");
-	gPlay = true;
-	speakerOn = true;
+      case 26:               // podcast
+	gTunEncoderPos = localPodcastPos; // Stream local podcast
 	break;
 	
       default:
@@ -975,6 +982,7 @@ void setupLoop() {
     int idx = 0;
     bool espRestart = false;
     bool havePost = false;
+    bool cmdTskChange = false;
     
     sp1("client connected");
     
@@ -1025,6 +1033,7 @@ void setupLoop() {
 	      sp2("L:", line);
 	      char name[maxValueSize], value[maxValueSize];
 	      int err;
+	      cmdTskChange = false;
 	      
 	      sp2("LINE: ", line);
 	      sp2("Line size: ", strlen(line));
@@ -1032,7 +1041,9 @@ void setupLoop() {
 	      if ( (err = reqParser.parse(line, true)) == REQPARSE_OKAY ) {
 		while ( reqParser.nextRequest(name, value, maxValueSize) ) {
 		  sp2sx(name, value);
-		  prefs.putString(name, value);// this updates all the settings
+		  if ( strstr(name, "tsk") == NULL ) {
+		    prefs.putString(name, value); // update the string settings
+		  }
 		  if ( strcmp(name, "ssid1") == 0 ) strcpy(ssids[0], value);
 		  if ( strcmp(name, "ssid2") == 0 ) strcpy(ssids[1], value);
 		  if ( strcmp(name, "pw1") == 0 ) strcpy(password[0], value);
@@ -1040,6 +1051,21 @@ void setupLoop() {
 		  for (int i=0; i<STATION_LIMIT; i++) {
 		    if ( strcmp(name, staIds[i]) == 0 ) {
 		      strcpy(gStationList[i], value);
+		    }
+		  }
+		  // update integer settings
+		  for (int i=0; i<nTaskIds; i++) {
+		    if ( strcmp(name, tskIds[i]) == 0 ) {
+		      int cId = atoi(value);
+		      int tId = atoi(name+3);
+		      sp2sx(cId, tId);
+		      if ( cId >= 0 && cId < COMMAND_LIMIT ) {
+			// update prefs, before we can update the
+			// gCommands table, we need to clear it out
+			// (see below)
+			prefs.putInt(name, cId);
+			cmdTskChange = true;
+		      }
 		    }
 		  }
 		}
@@ -1057,25 +1083,44 @@ void setupLoop() {
 	      }
 	      Serial.println("********* END POST EVENTS *************");
 	    }
-	    
+
+	    // IF CMD/TSK CHANGE: NEED TO CLOSE AND REOPEN PREFERENCES
+	    //  this clears the cache and prevents busy errors
+	    // use prefs, it gives us a lookup by task id
 	    // start a reply
+	    if ( cmdTskChange ) {
+	      prefs.end();
+	      prefs.begin("Zenith");
+	      // reestablish the sparse command to task array
+	      for (int i=0; i<COMMAND_LIMIT; i++) {
+		// must clear out changed values
+		gCommands[i] = 0;
+	      }
+	      for (int i=0; i<nTaskIds; i++) {
+		// populate with the currently saved settings
+		int cId = prefs.getInt(tskIds[i]);
+		int tId = atoi(tskIds[i]+3);
+		gCommands[cId] = tId;
+	      }
+	    }
+
+	    // response starts here
 	    client.println("HTTP/1.1 200 OK");
 	    client.println("Content-type:text/html");
 	    client.println();
 
+	    // html text of the page
 	    client.print(index_html);
 	    
 	    // Let's try to calculate the predicted data size to determine
-	    // allocated size.
-	    // plenty of room for wifi
+	    // allocated size for the first set to data values
 	    sp2("size of index2 = ", sizeof(index2_html));
 	    size_t predictedSize = sizeof(index2_html) + 4 * 80;
-					   // settings (also headroom)
 	    for (int i=0; i<STATION_LIMIT; i++) {
 	      predictedSize += (strlen(gStationList[i])+1);
 	    }
 	    
-	    // send back the settings page
+	    // send back the settings for wifi and urls
 	    char *buf1 = (char *)malloc(predictedSize);
 	    if ( buf1 == NULL ) {
 	      sp1x("Failed to allocate memory!!!");
@@ -1104,9 +1149,48 @@ void setupLoop() {
 	    sp1("Sending to client...");
 	    sp2("Heap ", ESP.getFreeHeap());
 	    client.print(buf1);
-	    client.println();
 	    free(buf1);
+
+	    // Let's try to calculate the predicted data size to determine
+	    // allocated size for the second set to data values
+	    sp2("size of index3 = ", sizeof(index3_html));
+	    predictedSize = sizeof(index3_html) + 8 * nTaskIds;
 	    
+	    // send back the settings for wifi and urls
+	    buf1 = (char *)malloc(predictedSize);
+	    if ( buf1 == NULL ) {
+	      sp1x("Failed to allocate memory!!!");
+	      vTaskDelay(100000/portTICK_PERIOD_MS);
+	    }
+
+	    snprintf(buf1, predictedSize, index3_html,
+		     prefs.getInt("tsk10"), prefs.getInt("tsk11"),
+		     prefs.getInt("tsk12"), prefs.getInt("tsk13"),
+		     prefs.getInt("tsk14"), prefs.getInt("tsk15"),
+		     prefs.getInt("tsk16"), prefs.getInt("tsk17"),
+		     prefs.getInt("tsk18"), prefs.getInt("tsk19"),
+		     prefs.getInt("tsk20"), prefs.getInt("tsk21"),
+		     prefs.getInt("tsk22"), prefs.getInt("tsk23"),
+		     prefs.getInt("tsk24"), prefs.getInt("tsk25"),
+		     prefs.getInt("tsk26")
+		    );
+
+	    // did we exceed the length!?! (should be impossible)
+	    sp2x("allocated buf1: ", predictedSize);
+	    sp2x("buf1 size: ", strlen(buf1));
+	    if ( strlen(buf1) >= predictedSize ) {
+	      sp1x("\n************ WEB PAGE MEMORY EXCEEDED **************");
+	      sp1x("restarting...");
+	      ESP.restart();
+	    }
+	    sp1x("Sending final part to client...");
+	    sp2x("Heap ", ESP.getFreeHeap());
+	    client.print(buf1);
+	    vTaskDelay(500/portTICK_PERIOD_MS);
+	    free(buf1);
+
+	    // end of response
+	    client.println();
 	    break;
 	  }
 	  else {
@@ -1143,7 +1227,7 @@ void mainLoop() {
     while ( gRadioOff ) {
       uint8_t cmdId = zenith.getCMDID();
       if ( cmdId != 0 ) {
-	sp2("CmdId = ", cmdId);
+	sp2x("** CmdId = ", cmdId);
       }
       if ( cmdId == 20 ) { // turn on radio
 	gRadioOff = false;

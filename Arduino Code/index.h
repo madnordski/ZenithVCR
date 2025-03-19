@@ -8,8 +8,8 @@
     html pages, one for setting the urls for the streaming channels
     and another for the voice command id to task id mapping.
     
-    $Revision: 1.12 $
-    $Date: 2025/03/11 20:11:40 $
+    $Revision: 1.14 $
+    $Date: 2025/03/19 14:48:48 $
     use % tail +18 > tmp.html to preview in a web browser
 */
 
@@ -33,6 +33,12 @@ table.readings td {text-align: center; }
 .staclass {
     width: 60ch;  /* Matches size="60" */
     max-width: 100%;
+}
+
+.tskclass {
+    width: 4ch;
+    max-width: 100%;
+    type: text;
 }
 
 </style>
@@ -157,55 +163,84 @@ table.readings td {text-align: center; }
 
 <h2>Voice Commands</h2>
 
-<p align="left">Although you can't change the voice command to task
-  mapping, it is displayed here. Before the Zenith will recognize a
-  command, you'll need to mute the radio and say "Hello, Robot".
-  After the Zenith quietly replies, you can speak any of the following
-  commands to have it take the associated action.</p>
-  
+  <p align="left"><a target="blank"
+    href="https://wiki.dfrobot.com/SKU_SEN0539-EN_Gravity_Voice_Recognition_Module_I2C_UART">Follow
+    the instructions</a> for training the DFRobot SEN0539 and record
+    the voice command id for each trained command.  Use the page below
+    to associate each command with an action that the Zenith can take.
+    Notice the first 5 commands in the table are preprogrammed in the
+    DFRobot so you do not train those commands.</p>
+
+<form method="post">
 <table align="center">
   <title>Voice Commands and Task Mapping</title>
-  <tr><th>You Say</th><th>The Zenith Performs Task</th></tr>
-  <tr><td>Volume up</td><td>
-      Turns up the volume</td></tr>
-  <tr><td>Volume down</td><td>
-      Turns down the volume</td></tr>
-  <tr><td>Change volume to maximum</td><td>
-      Sets volume to maximum</td></tr>
-  <tr><td>Change volume to minimum</td><td>
-      Sets volume to minimum</td></tr>
-  <tr><td>Change volume to medium</td><td>
-      Sets volume to the middle</td></tr>
-  <tr><td>Station up</td><td>
-      Moves the dial up one station</td></tr>
-  <tr><td>Station down</td><td>
-      Moves the dial down one station</td></tr>
-  <tr><td>Pause radio</td><td>
-      Pauses streamming radio</td></tr>
-  <tr><td>Resume radio</td><td>
-      Resumes streamming radio</td></tr>
-  <tr><td>Turn off radio</td><td>
-      Turns off radio, disables voice commands</td></tr>
-  <tr><td>Turn on radio</td><td>
-      Turns on radio, enables voice commands</td></tr>
-  <tr><td>Latin Radio</td><td>
-      Tunes into the station at 60 kHz on the dial</td></tr>
-  <tr><td>Play classical music</td><td>
-      Tunes into 65 kHz</td></tr>
-  <tr><td>Play jazz music</td><td>
-      Tunes into 110 kHz</td></tr>
-  <tr><td>Wisconsin Public Radio</td><td>
-      Tunes into 90 kHz</td></tr>
-  <tr><td>NPR</td><td>
-      Tunes into 80 kHz</td></tr>
-  <tr><td>CBC Music</td><td>
-      Tunes into 110 kHz</td></tr>
-  <tr><td>CBC Talk</td><td>
-      Tunes into 100 kHz</td></tr>
-  <tr><td>Prairie Public Radio</td><td>
-      Tunes into 70 kHz</td></tr>
-  <tr><td>Stream Local</td><td>
-      Tunes into 120 kHz</td></tr>
-  <tr><td>How's Marvin</td><td>Not yet implemented</td></tr>
-</table>
+  <tr><th>Command Id</th><th>TID</th>
+    <th>The Zenith Performs Task</th><th>Suggested Voice Command</th></tr>
+  <tr><td>97</td><td>5</td>
+    <td>Turns up the volume</td><td>Volume up</td></tr>
+  <tr><td>98</td><td>6</td>
+    <td>Turns down the volume</td><td>Volume down</td></tr>
+  <tr><td>99</td><td>7</td>
+    <td>Volume to maximum</td><td>Change volume to maximum</td></tr>
+  <tr><td>100</td><td>8</td>
+    <td>Volume to minimum</td><td>Change volume to minimum</td></tr>
+  <tr><td>101</td><td>9</td>
+    <td>Volume to medium</td><td>Change volume to medium</td></tr>
+  <tr><td><input class="tskclass" id="tsk10" name="tsk10" value=5></td>
+    <td>10</td>
+    <td>Moves the dial up one station</td><td>Station up</td></tr>
+  <tr><td><input class="tskclass" id="tsk11" name="tsk11" value=6></td>
+    <td>11</td>
+    <td>Moves the dial down one station</td><td>Station down</td></tr>
+  <tr><td><input class="tskclass" id="tsk22" name="tsk22" value=17></td>
+    <td>22</td>
+    <td>Pause playback</td><td>Pause radio</td></tr>
+  <tr><td><input class="tskclass" id="tsk23" name="tsk23" value=18></td>
+    <td>23</td>
+    <td>Resume playback</td><td>Resume radio</td></tr>
+  <tr><td><input class="tskclass" id="tsk24" name="tsk24" value=19></td>
+    <td>24</td>
+    <td>Turns off the radio</td><td>Turn off radio</td></tr>
+  <tr><td><input class="tskclass" id="tsk25" name="tsk25" value=20></td>
+    <td>25</td>
+    <td>Turns on the radio</td><td>Turn on radio</td></tr>
+  <tr><td><input class="tskclass" id="tsk17" name="tsk17" value=12></td>
+    <td>17</td>
+    <td>Tunes to 60 kHz</td><td>Latin radio</td></tr>
+  <tr><td><input class="tskclass" id="tsk19" name="tsk19" value=14></td>
+    <td>19</td>
+    <td>Tunes to 65 kHz</td><td>Play classical music</td></tr>
+  <tr><td><input class="tskclass" id="tsk20" name="tsk20" value=15></td>
+    <td>20</td>
+    <td>Tunes to 140 kHz</td><td>Play jazz music</td></tr>
+  <tr><td><input class="tskclass" id="tsk18" name="tsk18" value=13></td>
+    <td>18</td>
+    <td>Tunes to 55 kHz</td><td>Northern State Radio</td></tr>
+  <tr><td><input class="tskclass" id="tsk16" name="tsk16" value=11></td>
+    <td>16</td>
+    <td>Tunes to 70 kHz</td><td>Prairie Public Radio</td></tr>
+  <tr><td><input class="tskclass" id="tsk13" name="tsk13" value=8></td>
+    <td>13</td>
+    <td>Tunes to 80 kHz</td><td>NPR</td></tr>
+  <tr><td><input class="tskclass" id="tsk12" name="tsk12" value=7></td>
+    <td>12</td>
+    <td>Tunes to 90 kHz</td><td>Wisconsin Public Radio</td></tr>
+  <tr><td><input class="tskclass" id="tsk15" name="tsk15" value=10></td>
+    <td>15</td>
+    <td>Tunes to 100 kHz</td><td>CBC Talk</td></tr>
+  <tr><td><input class="tskclass" id="tsk14" name="tsk14" value=9></td>
+    <td>14</td>
+    <td>Tunes to 110 kHz</td><td>CBC Music</td></tr>
+  <tr><td><input class="tskclass" id="tsk21" name="tsk21" value=16></td>
+    <td>21</td>
+    <td>Tunes to 150 kHz</td><td>Stream Local</td></tr>
+  <tr><td><input class="tskclass" id="tsk26" name="tsk26" value=21></td>
+    <td>26</td>
+    <td>Tunes to 160 kHz</td><td>Stream Podcast</td></tr>
+    <tr><td colspan=4>
+	<input type="submit" value="Command Update" id="TskUpdate"
+	       onclick="alert('Close the browser to use the Zenith.');">
+    </td></tr>
+</table></form>
+
 )rawliteral";

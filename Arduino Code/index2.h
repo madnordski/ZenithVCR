@@ -8,8 +8,8 @@
     html pages, one for setting the urls for the streaming channels
     and another for the voice command id to task id mapping.
     
-    $Revision: 1.4 $
-    $Date: 2025/03/08 16:15:18 $
+    $Revision: 1.6 $
+    $Date: 2025/03/19 14:42:08 $
     use % tail +18 > tmp.html to preview in a web browser
 */
 
@@ -50,28 +50,4 @@ window.onload = function() {
     document.getElementById("sta160").value = "%s";  // 17
 
     // 4 wifi values plus 13 stations = 17 items
-}
-
-function sendBtn(item, reload) {
-    let server = new XMLHttpRequest();
-    server.open("GET", "/?" + item.id + "=on", true);
-    server.send();
-    if ( reload ) location.reload();
-}
-
-function togglepw(ob, pw) {
-  pwOb = document.getElementById(pw);
-  if ( pwOb.type == "password" ) {
-    pwOb.type = "text";
-    ob.value = "1";
-  }
-  else {
-    pwOb.type = "password";
-    ob.value = "0";
-  }
-}
-      
-</script>
-    
-</body></html>
 )rawliteral";
